@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node build.mjs && vite build --watch",
-    "build": "node build.mjs",
+    "dev": "TARGET=chrome node build.mjs && vite build --watch",
+    "build": "TARGET=chrome node build.mjs",
+    "build:chrome": "TARGET=chrome node build.mjs",
+    "build:firefox": "TARGET=firefox node build.mjs",
+    "lint:firefox": "web-ext lint --source-dir dist/firefox",
+    "package:firefox": "web-ext build --source-dir dist/firefox --artifacts-dir artifacts/firefox --overwrite-dest",
     "test": "vitest",
     "test:run": "vitest run",
     "coverage": "vitest run --coverage",
@@ -34,6 +38,7 @@
     "prettier": "^3.3.2",
     "typescript": "^5.5.3",
     "vite": "^5.3.3",
-    "vitest": "^2.0.3"
+    "vitest": "^2.0.3",
+    "web-ext": "^10.0.0"
   }
 }

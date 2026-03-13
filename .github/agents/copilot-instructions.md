@@ -4,6 +4,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-13
 
 ## Active Technologies
 - TypeScript 5.5 (strict mode) + React 18, Vite 5, Vitest 2.x, @testing-library/react 16, happy-dom / jsdom (002-api-json-parser)
+- TypeScript 5.5 (strict mode); Node.js ESM (build script) + Vite 5, `@vitejs/plugin-react`; new dev dep: `web-ext` (Mozilla's (003-firefox-build-support)
 
 - **Language**: TypeScript 5.x; Node.js 20+ (build only)
 - **Build**: Vite 5.x with `@vitejs/plugin-react` — multi-entry IIFE output for Chrome extension content scripts
@@ -60,4 +61,5 @@ pnpm typecheck    # tsc --noEmit
 
 
 ## Recent Changes
+- 003-firefox-build-support: Added TypeScript 5.5 (strict mode); Node.js ESM (build script) + Vite 5, `@vitejs/plugin-react`; new dev dep: `web-ext` (Mozilla's
 - 002-api-json-parser: Added TypeScript 5.5 (strict mode) + React 18, Vite 5, Vitest 2.x, @testing-library/react 16, happy-dom / jsdom

@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 coverage/
+artifacts/
 *.log
 .env*
 .DS_Store
@@ -11,4 +12,4 @@ Thumbs.db
 .vscode/
 .idea/
 pnpm-lock.yaml
-mitramite-extension.zip
+mitramite-extension*.zip
