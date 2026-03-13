@@ -159,4 +159,103 @@ describe('Panel component', () => {
     expect(screen.queryByTestId('copy-toast')).toBeNull();
     vi.useRealTimers();
   });
+
+  // ─── Tramite integration tests (T005) ──────────────────────────────────────
+
+  it('renders TramitePanel when busqueda event carries a tramite JSON body', () => {
+    render(<Panel />);
+    act(() => {
+      dispatchBusquedaEvent(
+        JSON.stringify({
+          codigo: 0,
+          data: {
+            id_tramite: '99887766',
+            tipo_tramite: 'NUEVA',
+            clase_tramite: 'ORDINARIO',
+            tipo_dni: 'PRIMERA VEZ',
+            descripcion_tramite: 'DNI CON CHIP',
+            fecha_toma: '2026-01-15',
+            descripcion_ultimo_estado: 'EN PRODUCCIÓN',
+            fecha_ultimo_estado: '2026-02-10',
+            descripcion_anteultimo_estado: 'INGRESADO',
+            fecha_anteultimo_estado: '2026-01-16',
+            tipo_retiro: 'CORREO',
+            correo: 'CORREO ARGENTINO',
+            oficina_remitente: {
+              descripcion: 'DELEGACIÓN CENTRO',
+              domicilio: 'AV. CALLAO 110',
+              codigo_postal: '1022',
+              provincia: 'CIUDAD AUTÓNOMA DE BUENOS AIRES',
+            },
+          },
+        }),
+      );
+    });
+    expect(screen.getByTestId('overlay-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('tramite-panel')).toBeInTheDocument();
+  });
+
+  it('panel heading reads "Estado de trámite" for a tramite result', () => {
+    render(<Panel />);
+    act(() => {
+      dispatchBusquedaEvent(
+        JSON.stringify({
+          codigo: 0,
+          data: {
+            id_tramite: '11223344',
+            tipo_tramite: 'RENOVACION',
+            clase_tramite: 'URGENTE',
+            tipo_dni: 'RENOVACIÓN',
+            descripcion_tramite: 'DNI RENOVACIÓN',
+            fecha_toma: '15/03/2026',
+            descripcion_ultimo_estado: 'ENTREGADO',
+            fecha_ultimo_estado: '20/03/2026',
+            tipo_retiro: 'RETIRO_DELEGACION',
+            correo: '',
+          },
+        }),
+      );
+    });
+    expect(screen.getByText('Estado de trámite')).toBeInTheDocument();
+  });
+
+  it('existing slot tests still pass (regression guard)', () => {
+    render(<Panel />);
+    act(() => {
+      dispatchBusquedaEvent(
+        JSON.stringify([{ fecha: '2026-03-20', hora: '09:00', sede: 'CABA', tramite: 'DNI', cupos: 2 }]),
+      );
+    });
+    expect(screen.getByTestId('slot-list')).toBeInTheDocument();
+  });
+
+  it('existing error tests still pass (regression guard)', () => {
+    render(<Panel />);
+    act(() => {
+      dispatchBusquedaEvent(
+        JSON.stringify({ success: false, error: { codigo: 500, descripcion: 'Error del servidor' } }),
+      );
+    });
+    expect(screen.getByTestId('error-banner')).toBeInTheDocument();
+  });
+
+  it('renders ErrorBanner for tramite error response { codigo: 1, mensaje }', () => {
+    render(<Panel />);
+    act(() => {
+      dispatchBusquedaEvent(JSON.stringify({ codigo: 1, mensaje: 'No se encontró' }));
+    });
+    expect(screen.getByTestId('overlay-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('error-banner')).toBeInTheDocument();
+    expect(screen.getByText(/No se encontró/)).toBeInTheDocument();
+  });
+
+  it('renders SlotList for busqueda.php slot fixture (regression guard)', () => {
+    render(<Panel />);
+    act(() => {
+      dispatchBusquedaEvent(
+        JSON.stringify({ turnos: [{ fecha: '2026-03-20', hora: '10:00', sede: 'Córdoba' }] }),
+      );
+    });
+    expect(screen.getByTestId('slot-list')).toBeInTheDocument();
+  });
 });

@@ -2,9 +2,11 @@ import type { BusquedaEventDetail } from '../types/busqueda';
 
 // MAIN-world content script.
 // Patches window.fetch and window.XMLHttpRequest to intercept busqueda.php responses
-// and forward the raw body to the isolated-world content script via CustomEvent.
+// and the tramite-status endpoint, forwarding the raw body to the isolated-world
+// content script via CustomEvent.
 
 const URL_FILTER = 'busqueda.php';
+const TRAMITE_URL_FILTER = 'https://mitramite.renaper.gob.ar/busqueda.php';
 
 function dispatchBusquedaEvent(body: string): void {
   const event = new CustomEvent<BusquedaEventDetail>('mitramite:busqueda', {
@@ -36,7 +38,7 @@ XMLHttpRequest.prototype.open = function (
 
 XMLHttpRequest.prototype.send = function (...args) {
   const url = xhrUrlMap.get(this) ?? '';
-  if (url.includes(URL_FILTER)) {
+  if (url.includes(URL_FILTER) || url.includes(TRAMITE_URL_FILTER)) {
     this.addEventListener('load', () => {
       dispatchBusquedaEvent(this.responseText);
     });
@@ -50,7 +52,7 @@ const originalFetch = window.fetch.bind(window);
 window.fetch = async function (input, init) {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   const response = await originalFetch(input, init);
-  if (url.includes(URL_FILTER)) {
+  if (url.includes(URL_FILTER) || url.includes(TRAMITE_URL_FILTER)) {
     const cloned = response.clone();
     cloned.text().then(dispatchBusquedaEvent).catch(() => undefined);
   }

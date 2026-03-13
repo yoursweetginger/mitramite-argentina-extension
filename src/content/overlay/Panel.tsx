@@ -6,6 +6,7 @@ import type { BusquedaEventDetail, OverlayState } from '../../types/busqueda';
 import { SlotList } from './SlotList';
 import { ErrorBanner } from './ErrorBanner';
 import { CopyButton } from './CopyButton';
+import { TramitePanel } from './TramitePanel';
 
 const INITIAL_STATE: OverlayState = {
   visible: false,
@@ -49,7 +50,9 @@ export function Panel() {
   return (
     <div data-testid="overlay-panel" id="mitramite-panel">
       <div id="mitramite-panel-header">
-        <span id="mitramite-panel-title">Turnos disponibles — Mitramite</span>
+        <span id="mitramite-panel-title">
+          {result.kind === 'tramite' ? 'Estado de trámite' : 'Turnos disponibles — Mitramite'}
+        </span>
         <button
           data-testid="close-btn"
           id="mitramite-close-btn"
@@ -62,6 +65,7 @@ export function Panel() {
       </div>
 
       {result.kind === 'slots' && <SlotList slots={result.slots} />}
+      {result.kind === 'tramite' && <TramitePanel tramite={result.tramite} />}
       {result.kind === 'raw' && (
         <pre data-testid="raw-block">{result.rawText}</pre>
       )}

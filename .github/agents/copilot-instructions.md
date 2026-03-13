@@ -3,6 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2026-03-13
 
 ## Active Technologies
+- TypeScript 5.5 (strict mode) + React 18, Vite 5, Vitest 2.x, @testing-library/react 16, happy-dom / jsdom (002-api-json-parser)
 
 - **Language**: TypeScript 5.x; Node.js 20+ (build only)
 - **Build**: Vite 5.x with `@vitejs/plugin-react` — multi-entry IIFE output for Chrome extension content scripts
@@ -57,3 +58,6 @@ pnpm typecheck    # tsc --noEmit
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
 
+
+## Recent Changes
+- 002-api-json-parser: Added TypeScript 5.5 (strict mode) + React 18, Vite 5, Vitest 2.x, @testing-library/react 16, happy-dom / jsdom

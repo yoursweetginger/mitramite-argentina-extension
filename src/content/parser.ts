@@ -1,4 +1,4 @@
-import type { AppointmentSlot, ParseResult, RawBusquedaPayload } from '../types/busqueda';
+import type { AppointmentSlot, EstadoEntry, OficinaRemitente, ParseResult, RawBusquedaPayload, TramiteStatus } from '../types/busqueda';
 
 const ARRAY_KEYS = ['turnos', 'horarios', 'resultados'] as const;
 
@@ -94,12 +94,108 @@ function extractErrorMessage(parsed: RawBusquedaPayload): string {
   return 'Error desconocido';
 }
 
+// ─── Tramite-status helpers ───────────────────────────────────────────────────
+
+/**
+ * Converts YYYY-MM-DD (or ISO 8601 datetime) to DD/MM/YYYY.
+ * DD/MM/YYYY input is passed through unchanged.
+ * Empty string returns empty string.
+ */
+export function formatDateForDisplay(raw: string): string {
+  if (raw === '') return '';
+  // Strip time component from ISO 8601 datetime (e.g. 2026-01-15T10:30:00)
+  const datePart = raw.includes('T') ? raw.split('T')[0] : raw;
+  // YYYY-MM-DD → DD/MM/YYYY
+  const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (isoDate) {
+    return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+  }
+  // Already DD/MM/YYYY — pass through
+  return raw;
+}
+
+function strFieldSafe(obj: Record<string, unknown>, key: string): string {
+  const val = obj[key];
+  return typeof val === 'string' ? val : '';
+}
+
+export function isTramiteResponse(parsed: unknown): boolean {
+  if (typeof parsed !== 'object' || parsed === null) return false;
+  const obj = parsed as Record<string, unknown>;
+  if (typeof obj['data'] !== 'object' || obj['data'] === null) return false;
+  const data = obj['data'] as Record<string, unknown>;
+  return typeof data['id_tramite'] === 'string' && data['id_tramite'] !== '';
+}
+
+/** Detects any tramite API response (success OR error) by the presence of a numeric `codigo` field. */
+function isTramiteApiResponse(parsed: unknown): parsed is Record<string, unknown> {
+  if (!isObject(parsed)) return false;
+  return typeof parsed['codigo'] === 'number';
+}
+
+function parseTramiteStatus(parsed: Record<string, unknown>): ParseResult {
+  const data = parsed['data'] as Record<string, unknown>;
+  const codigoRaw = parsed['codigo'];
+  const codigo = typeof codigoRaw === 'number' ? codigoRaw : 1;
+  if (codigo !== 0) {
+    const msg = typeof parsed['mensaje'] === 'string' ? parsed['mensaje'] : 'Error al consultar el trámite';
+    return { kind: 'error', message: msg };
+  }
+
+  const rawOficina = typeof data['oficina_remitente'] === 'object' && data['oficina_remitente'] !== null
+    ? (data['oficina_remitente'] as Record<string, unknown>)
+    : {} as Record<string, unknown>;
+
+  const oficina: OficinaRemitente = {
+    descripcion: strFieldSafe(rawOficina, 'descripcion'),
+    domicilio: strFieldSafe(rawOficina, 'domicilio'),
+    codigo_postal: strFieldSafe(rawOficina, 'codigo_postal'),
+    provincia: strFieldSafe(rawOficina, 'provincia'),
+  };
+
+  const hasAnteultimo =
+    typeof data['descripcion_anteultimo_estado'] === 'string' &&
+    data['descripcion_anteultimo_estado'] !== '' ||
+    typeof data['fecha_anteultimo_estado'] === 'string' &&
+    data['fecha_anteultimo_estado'] !== '';
+
+  const anteultimo: EstadoEntry | null = hasAnteultimo
+    ? {
+        descripcion: strFieldSafe(data, 'descripcion_anteultimo_estado'),
+        fecha: formatDateForDisplay(strFieldSafe(data, 'fecha_anteultimo_estado')),
+      }
+    : null;
+
+  const tramite: TramiteStatus = {
+    id_tramite: strFieldSafe(data, 'id_tramite'),
+    tipo_tramite: strFieldSafe(data, 'tipo_tramite'),
+    clase_tramite: strFieldSafe(data, 'clase_tramite'),
+    tipo_dni: strFieldSafe(data, 'tipo_dni'),
+    descripcion_tramite: strFieldSafe(data, 'descripcion_tramite'),
+    fecha_toma: formatDateForDisplay(strFieldSafe(data, 'fecha_toma')),
+    ultimo_estado: {
+      descripcion: strFieldSafe(data, 'descripcion_ultimo_estado'),
+      fecha: formatDateForDisplay(strFieldSafe(data, 'fecha_ultimo_estado')),
+    },
+    anteultimo_estado: anteultimo,
+    oficina_remitente: oficina,
+    tipo_retiro: strFieldSafe(data, 'tipo_retiro'),
+    correo: strFieldSafe(data, 'correo'),
+  };
+
+  return { kind: 'tramite', tramite };
+}
+
 export function parse(rawBody: string): ParseResult {
   let parsed: RawBusquedaPayload;
   try {
     parsed = JSON.parse(rawBody) as RawBusquedaPayload;
   } catch {
     return { kind: 'raw', rawText: rawBody };
+  }
+
+  if (isTramiteApiResponse(parsed)) {
+    return parseTramiteStatus(parsed);
   }
 
   if (isErrorResponse(parsed)) {
