@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Mitramite — Turnos disponibles",
+  "version": "0.1.0",
+  "description": "Muestra los datos de turnos disponibles desde busqueda.php en mitramite.renaper.gob.ar",
+  "permissions": ["activeTab", "clipboardWrite"],
+  "host_permissions": ["*://mitramite.renaper.gob.ar/*"],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "128": "icons/icon-128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://mitramite.renaper.gob.ar/*"],
+      "js": ["interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://mitramite.renaper.gob.ar/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": []
+}
