@@ -107,7 +107,7 @@ Each workflow job that runs `pnpm` commands MUST include these steps in order:
 - uses: actions/checkout@v4
 - uses: pnpm/action-setup@v4
   with:
-    version: 9
+    version: 10
 - uses: actions/setup-node@v4
   with:
     node-version: 20

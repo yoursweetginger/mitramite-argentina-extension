@@ -88,8 +88,11 @@ This avoids pinning a third-party action whose maintenance status is uncertain.
 OAuth2 setup steps (done once by the operator):
 
 1. Create a Google Cloud project, enable the Chrome Web Store API.
-2. Create OAuth2 credentials (`installed` app type), obtain `client_id` and
-   `client_secret`.
+2. Create OAuth2 credentials (**Web application** type), obtain `client_id` and
+   `client_secret`. Under **Authorized redirect URIs**, add
+   `https://developers.google.com/oauthplayground`.
+   > Do **not** choose "Desktop app" — Desktop app clients use `http://localhost`
+   > redirect URIs only and cannot be used with the OAuth Playground.
 3. Generate a `refresh_token` using the OAuth2 playground
    (scope: `https://www.googleapis.com/auth/chromewebstore`).
 4. Store `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`,

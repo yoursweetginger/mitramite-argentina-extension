@@ -39,7 +39,11 @@ workflow, and what to expect from a release run.
 2. Create or select a project.
 3. Go to **APIs & Services → Library**, search for "Chrome Web Store API", enable it.
 4. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
-5. Select **Desktop app** as the application type.
+5. Select **Web application** as the application type.
+   > Do **not** choose "Desktop app" — Desktop app clients have hard-coded redirect
+   > URIs (`http://localhost` only) and cannot be used with the OAuth Playground.
+   > A Web application client is required so you can authorize the Playground's
+   > callback URL (`https://developers.google.com/oauthplayground`).
 6. Download or copy the **Client ID** and **Client secret**.
 
 **2b. Generate a refresh token:**

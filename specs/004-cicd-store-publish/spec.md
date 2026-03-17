@@ -7,7 +7,7 @@
 
 ## User Scenarios & Testing _(mandatory)_
 
-### User Story 1 - Automated Quality Gate on Every Push (Priority: P1)
+### User Story 1 - Automated Quality Gate on Every Pull Request (Priority: P1)
 
 A developer pushes code to a branch or opens a pull request. The pipeline automatically runs all tests and reports pass/fail status back to the developer and the pull request, preventing broken code from being merged.
 
