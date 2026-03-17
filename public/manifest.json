@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Mitramite — Turnos disponibles",
+  "name": "Mitramite Turnos",
   "version": "0.1.0",
-  "description": "Muestra los datos de turnos disponibles desde busqueda.php en mitramite.renaper.gob.ar",
+  "description": "Consultá los turnos disponibles de mitramite.renaper.gob.ar en un panel limpio, sin abrir DevTools ni la pestaña de red.",
   "permissions": ["activeTab", "clipboardWrite"],
   "host_permissions": ["*://mitramite.renaper.gob.ar/*"],
   "action": {
