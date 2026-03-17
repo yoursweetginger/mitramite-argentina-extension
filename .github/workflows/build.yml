@@ -3,7 +3,7 @@ name: Build — Extension Artifacts
 on:
   push:
     branches:
-      - main
+      - master
 
 permissions:
   contents: read

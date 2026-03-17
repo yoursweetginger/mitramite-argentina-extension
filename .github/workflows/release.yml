@@ -30,14 +30,14 @@ jobs:
           fi
           echo "Tag '$GITHUB_REF_NAME' is valid."
 
-      - name: Verify tag is on main
+      - name: Verify tag is on master
         run: |
-          git fetch origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::Tag '$GITHUB_REF_NAME' does not point to a commit on main"
+          git fetch origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not point to a commit on master"
             exit 1
           fi
-          echo "Tag '$GITHUB_REF_NAME' is on main."
+          echo "Tag '$GITHUB_REF_NAME' is on master."
 
   build-firefox:
     name: build-firefox
