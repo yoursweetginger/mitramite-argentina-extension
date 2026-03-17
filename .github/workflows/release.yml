@@ -1,0 +1,279 @@
+name: Release — Build & Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate-tag:
+    name: validate-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag format
+        run: |
+          if ! echo "$GITHUB_REF_NAME" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not match required format vX.Y.Z"
+            exit 1
+          fi
+          echo "Tag '$GITHUB_REF_NAME' is valid."
+
+      - name: Verify tag is on master
+        run: |
+          git fetch origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not point to a commit on master"
+            exit 1
+          fi
+          echo "Tag '$GITHUB_REF_NAME' is on master."
+
+  build-firefox:
+    name: build-firefox
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.VERSION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Extract version from tag
+        id: extract-version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Patch manifest.json version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg v "$VERSION" '.version = $v' public/manifest.json > /tmp/manifest.json
+          mv /tmp/manifest.json public/manifest.json
+
+      - name: Build Firefox extension
+        run: pnpm build:firefox
+
+      - name: Package Firefox zip
+        run: pnpm package:firefox
+
+      - name: Upload Firefox release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: firefox-extension-release
+          path: dist/firefox/
+          retention-days: 90
+
+  publish-firefox:
+    name: publish-firefox
+    needs: build-firefox
+    runs-on: ubuntu-latest
+    env:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download Firefox release artifact
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc95b # v4.2.1
+        with:
+          name: firefox-extension-release
+          path: dist/firefox/
+
+      - name: Validate AMO credentials
+        run: |
+          set +x
+          if [ -z "$AMO_JWT_ISSUER" ]; then
+            echo "::error::AMO_JWT_ISSUER secret is not set"
+            exit 1
+          fi
+          if [ -z "$AMO_JWT_SECRET" ]; then
+            echo "::error::AMO_JWT_SECRET secret is not set"
+            exit 1
+          fi
+
+      - name: Publish to Firefox Add-ons Store
+        run: |
+          set +x
+          mkdir -p signed-firefox
+          EXIT_CODE=0
+          pnpm web-ext sign \
+            --channel=listed \
+            --api-key="$AMO_JWT_ISSUER" \
+            --api-secret="$AMO_JWT_SECRET" \
+            --source-dir=dist/firefox \
+            --artifacts-dir=signed-firefox \
+            --no-input 2>web-ext-stderr.txt || EXIT_CODE=$?
+          if [ "$EXIT_CODE" != "0" ]; then
+            if grep -qi "version already exists\|already exists\|version conflict\|409" web-ext-stderr.txt; then
+              echo "Version already exists on AMO; skipping re-submission."
+              exit 0
+            fi
+            cat web-ext-stderr.txt >&2
+            exit "$EXIT_CODE"
+          fi
+
+  build-chrome:
+    name: build-chrome
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Patch manifest.json version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg v "$VERSION" '.version = $v' public/manifest.json > /tmp/manifest.json
+          mv /tmp/manifest.json public/manifest.json
+
+      - name: Build Chrome extension
+        run: pnpm build:chrome
+
+      - name: Package Chrome zip
+        run: |
+          mkdir -p artifacts/chrome
+          cd dist/chrome && zip -r ../../artifacts/chrome/extension.zip .
+
+      - name: Upload Chrome release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: chrome-extension-release
+          path: artifacts/chrome/extension.zip
+          retention-days: 90
+
+  publish-chrome:
+    name: publish-chrome
+    needs: build-chrome
+    runs-on: ubuntu-latest
+    env:
+      CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+      CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+      CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+      CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+    steps:
+      - name: Download Chrome release artifact
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc95b # v4.2.1
+        with:
+          name: chrome-extension-release
+          path: artifacts/chrome/
+
+      - name: Validate Chrome credentials
+        run: |
+          set +x
+          MISSING=""
+          [ -z "$CHROME_CLIENT_ID" ] && MISSING="$MISSING CHROME_CLIENT_ID"
+          [ -z "$CHROME_CLIENT_SECRET" ] && MISSING="$MISSING CHROME_CLIENT_SECRET"
+          [ -z "$CHROME_REFRESH_TOKEN" ] && MISSING="$MISSING CHROME_REFRESH_TOKEN"
+          [ -z "$CHROME_EXTENSION_ID" ] && MISSING="$MISSING CHROME_EXTENSION_ID"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing required secrets:$MISSING"
+            exit 1
+          fi
+
+      - name: Exchange refresh token for access token
+        id: get-token
+        run: |
+          set +x
+          ACCESS_TOKEN=$(curl -s -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=${CHROME_CLIENT_ID}" \
+            -d "client_secret=${CHROME_CLIENT_SECRET}" \
+            -d "refresh_token=${CHROME_REFRESH_TOKEN}" \
+            -d "grant_type=refresh_token" \
+            | jq -r '.access_token')
+          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
+            echo "::error::Failed to obtain access token from Google OAuth2"
+            exit 1
+          fi
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Upload extension to Chrome Web Store
+        id: upload
+        run: |
+          set +x
+          HTTP_STATUS=$(curl -s -o /tmp/upload_response.json -w "%{http_code}" \
+            -X PUT \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "x-goog-api-version: 2" \
+            -T artifacts/chrome/extension.zip)
+          echo "Upload HTTP status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" = "409" ]; then
+            echo "Version already submitted to Chrome Web Store; skipping."
+            echo "SKIP_PUBLISH=true" >> "$GITHUB_ENV"
+          elif [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Upload failed with HTTP $HTTP_STATUS"
+            cat /tmp/upload_response.json
+            exit 1
+          fi
+
+      - name: Publish to Chrome Web Store
+        if: env.SKIP_PUBLISH != 'true'
+        run: |
+          set +x
+          HTTP_STATUS=$(curl -s -o /tmp/publish_response.json -w "%{http_code}" \
+            -X POST \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}/publish" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "x-goog-api-version: 2" \
+            -H "Content-Length: 0")
+          echo "Publish HTTP status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Publish failed with HTTP $HTTP_STATUS"
+            cat /tmp/publish_response.json
+            exit 1
+          fi
+          echo "Successfully published to Chrome Web Store."
+          echo "Dashboard: https://chrome.google.com/webstore/devconsole/"
