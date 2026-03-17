@@ -5,6 +5,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-13
 ## Active Technologies
 - TypeScript 5.5 (strict mode) + React 18, Vite 5, Vitest 2.x, @testing-library/react 16, happy-dom / jsdom (002-api-json-parser)
 - TypeScript 5.5 (strict mode); Node.js ESM (build script) + Vite 5, `@vitejs/plugin-react`; new dev dep: `web-ext` (Mozilla's (003-firefox-build-support)
+- YAML (GitHub Actions), Bash (inline steps), Node.js 20 LTS + GitHub Actions (`ubuntu-latest`), `pnpm` v9, `web-ext` v10 (already a `devDependency`), Chrome Web Store Upload API v1.1, Firefox AMO API v5 (via `web-ext sign`), `jq` (pre-installed on runners) (004-cicd-store-publish)
+- GitHub Actions artifact storage (90-day retention); no new persistent storage (004-cicd-store-publish)
 
 - **Language**: TypeScript 5.x; Node.js 20+ (build only)
 - **Build**: Vite 5.x with `@vitejs/plugin-react` — multi-entry IIFE output for Chrome extension content scripts
@@ -61,5 +63,6 @@ pnpm typecheck    # tsc --noEmit
 
 
 ## Recent Changes
+- 004-cicd-store-publish: Added YAML (GitHub Actions), Bash (inline steps), Node.js 20 LTS + GitHub Actions (`ubuntu-latest`), `pnpm` v9, `web-ext` v10 (already a `devDependency`), Chrome Web Store Upload API v1.1, Firefox AMO API v5 (via `web-ext sign`), `jq` (pre-installed on runners)
 - 003-firefox-build-support: Added TypeScript 5.5 (strict mode); Node.js ESM (build script) + Vite 5, `@vitejs/plugin-react`; new dev dep: `web-ext` (Mozilla's
 - 002-api-json-parser: Added TypeScript 5.5 (strict mode) + React 18, Vite 5, Vitest 2.x, @testing-library/react 16, happy-dom / jsdom
