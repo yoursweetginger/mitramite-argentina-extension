@@ -1,6 +1,6 @@
 # Mitramite — Turnos disponibles
 
-A Chrome extension (Manifest V3) that intercepts appointment-availability responses from the Argentine government portal [mitramite.renaper.gob.ar](https://mitramite.renaper.gob.ar) and surfaces them in a clean floating overlay — no DevTools, no dropdown hunting.
+A browser extension (Manifest V3) for Chrome and Firefox that intercepts appointment-availability responses from the Argentine government portal [mitramite.renaper.gob.ar](https://mitramite.renaper.gob.ar) and surfaces them in a clean floating overlay — no DevTools, no dropdown hunting.
 
 ---
 
@@ -36,6 +36,7 @@ The interceptor is read-only — it never modifies requests or responses.
 - Node.js 18+
 - [pnpm](https://pnpm.io/) 9+
 - Chrome 111+ (requires `world: "MAIN"` content-script support)
+- Firefox 128+ (for Firefox builds)
 
 ---
 
@@ -45,10 +46,13 @@ The interceptor is read-only — it never modifies requests or responses.
 # Install dependencies
 pnpm install
 
-# One-shot production build → dist/
-pnpm build
+# One-shot production build for Chrome → dist/chrome/
+pnpm build:chrome
 
-# Watch mode (rebuilds dist/ on every src/ change)
+# One-shot production build for Firefox → dist/firefox/
+pnpm build:firefox
+
+# Watch mode — rebuilds dist/chrome/ on every src/ change
 pnpm dev
 ```
 
@@ -56,24 +60,34 @@ pnpm dev
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode** (top-right toggle).
-3. Click **Load unpacked** and select the `dist/` folder.
+3. Click **Load unpacked** and select the `dist/chrome/` folder.
 4. After any rebuild, click the **↺** reload icon on the extension card.
+
+### Load in Firefox
+
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Click **Load Temporary Add-on…** and select any file inside `dist/firefox/`.
+3. After any rebuild, click **Reload** on the extension entry.
 
 ---
 
 ## Scripts
 
-| Script           | Description                                          |
-| ---------------- | ---------------------------------------------------- |
-| `pnpm build`     | Production build — outputs `dist/`                   |
-| `pnpm dev`       | Watch-mode build                                     |
-| `pnpm test`      | Unit tests in watch mode (Vitest)                    |
-| `pnpm test:run`  | Unit tests, single pass (CI)                         |
-| `pnpm coverage`  | Tests + V8 coverage report (`coverage/lcov-report/`) |
-| `pnpm lint`      | ESLint with zero-warnings policy                     |
-| `pnpm typecheck` | TypeScript type-check without emitting JS            |
+| Script                 | Description                                                    |
+| ---------------------- | -------------------------------------------------------------- |
+| `pnpm build`           | Alias for `build:chrome` — outputs `dist/chrome/`              |
+| `pnpm build:chrome`    | Production build for Chrome — outputs `dist/chrome/`           |
+| `pnpm build:firefox`   | Production build for Firefox — outputs `dist/firefox/`         |
+| `pnpm dev`             | Watch-mode build (Chrome)                                      |
+| `pnpm test`            | Unit tests in watch mode (Vitest)                              |
+| `pnpm test:run`        | Unit tests, single pass (CI)                                   |
+| `pnpm coverage`        | Tests + V8 coverage report (`coverage/lcov-report/`)           |
+| `pnpm lint`            | ESLint with zero-warnings policy                               |
+| `pnpm lint:firefox`    | `web-ext lint` against `dist/firefox/`                         |
+| `pnpm package:firefox` | Package `dist/firefox/` into a distributable zip via `web-ext` |
+| `pnpm typecheck`       | TypeScript type-check without emitting JS                      |
 
-> **Note:** The build runs three sequential Vite IIFE bundles (one per entry point) via [`build.mjs`](build.mjs) to work around Rollup's limitation with multiple IIFE inputs.
+> **Note:** The build runs three sequential Vite IIFE bundles (one per entry point) via [`build.mjs`](build.mjs) to work around Rollup's limitation with multiple IIFE inputs. The `TARGET` env var selects the output directory (`chrome` or `firefox`); the Firefox build additionally patches the manifest with `browser_specific_settings.gecko`.
 
 ---
 
@@ -92,19 +106,55 @@ public/
 ├── manifest.json
 └── popup/popup.html
 tests/unit/            # Vitest + Testing Library tests
-specs/                 # Feature spec, research notes, implementation plan
+specs/                 # Feature specs, research notes, implementation plans
+.github/workflows/
+├── ci.yml             # Tests & lint on every pull request
+├── build.yml          # Builds both targets and uploads artifacts on push to master
+└── release.yml        # Builds, packages, and publishes to stores on version tag (v*.*.*)
 ```
+
+---
+
+## CI/CD
+
+Three GitHub Actions workflows automate the quality and release pipeline:
+
+| Workflow      | Trigger                 | What it does                                                     |
+| ------------- | ----------------------- | ---------------------------------------------------------------- |
+| `ci.yml`      | Pull request → `master` | Runs unit tests and ESLint; blocks merge on failure              |
+| `build.yml`   | Push to `master`        | Builds Chrome and Firefox artifacts and uploads them for 90 days |
+| `release.yml` | Push of a `v*.*.*` tag  | Builds, packages, and publishes the Firefox extension to AMO     |
+
+To release a new version, create and push a semver tag from the `master` branch:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The release workflow validates the tag, patches `manifest.json` with the version number, and publishes to the Firefox Add-ons Store using the `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` repository secrets.
 
 ---
 
 ## Packaging for distribution
 
+**Chrome:**
+
 ```bash
-pnpm build
-zip -r mitramite-extension.zip dist/
+pnpm build:chrome
+cd dist/chrome && zip -r ../../mitramite-extension.zip .
 ```
 
 Upload the zip to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+
+**Firefox:**
+
+```bash
+pnpm build:firefox
+pnpm package:firefox   # produces artifacts/firefox/*.zip
+```
+
+Upload the zip to [addons.mozilla.org](https://addons.mozilla.org/developers/).
 
 ---
 
@@ -115,4 +165,5 @@ Upload the zip to the [Chrome Web Store Developer Dashboard](https://chrome.goog
 - **Vite 5** + `@vitejs/plugin-react`
 - **Vitest 2** + Testing Library
 - **ESLint 8** + Prettier 3
+- **web-ext 10** (Firefox packaging & linting)
 - **pnpm 9**
