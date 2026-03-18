@@ -2,6 +2,7 @@
   "name": "mitramite-argentina-extension",
   "version": "0.1.0",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "dev": "TARGET=chrome node build.mjs && vite build --watch",
     "build": "TARGET=chrome node build.mjs",
