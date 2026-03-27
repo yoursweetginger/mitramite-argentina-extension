@@ -1,5 +1,8 @@
 # Mitramite — Turnos disponibles
 
+- Chrome Web Store: https://chromewebstore.google.com/detail/poajbmnppibplfelmnbbhifaelmhpcio?utm_source=item-share-cb
+- Firefox Add-ons: https://addons.mozilla.org/es-ES/firefox/addon/mitramite-turnos/
+
 A browser extension (Manifest V3) for Chrome and Firefox that intercepts appointment-availability responses from the Argentine government portal [mitramite.renaper.gob.ar](https://mitramite.renaper.gob.ar) and surfaces them in a clean floating overlay — no DevTools, no dropdown hunting.
 
 ---
